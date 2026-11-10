@@ -15,6 +15,13 @@
       "when": 1794285326006,
       "tag": "0001_even_longshot",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1794298245960,
+      "tag": "0002_workable_peter_quill",
+      "breakpoints": true
     }
   ]
 }

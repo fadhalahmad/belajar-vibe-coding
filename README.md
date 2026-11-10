@@ -50,6 +50,7 @@ Kalau koneksi database gagal saat start, server sengaja langsung berhenti dengan
 | POST   | `/notes`          | Buat note baru                    |
 | DELETE | `/notes/:id`      | Hapus note                        |
 | POST   | `/api/users`      | Registrasi user baru              |
+| POST   | `/api/users/login`| Login user, mengembalikan token   |
 
 Contoh membuat note:
 
@@ -68,6 +69,20 @@ curl -i -X POST http://localhost:3000/api/users \
 # → 201 {"data":"OK"}
 ```
 
+Contoh login:
+
+```bash
+curl -i -X POST http://localhost:3000/api/users/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"fadhal@localhost","password":"rahasia"}'
+# → 200 {"data":"<uuid-token>"}
+```
+
+> **Catatan:** login mengembalikan token session dan menyimpannya di tabel `sessions`,
+> tapi token itu **belum dipakai** untuk mengautentikasi request lain. Tidak ada
+> middleware auth di project ini — jadi jangan bingung kalau token tidak "berfungsi"
+> di endpoint lain. Itu memang di luar lingkup, bukan bug.
+
 Semua response memakai bentuk konsisten:
 - sukses: `{ "success": true, "data": ... }`
 - gagal: `{ "success": false, "error": "pesan" }`
@@ -76,6 +91,10 @@ Semua response memakai bentuk konsisten:
 > Bentuknya `{ "data": "OK" }` (201), `{ "error": "Email sudah terdaftar" }` (409),
 > dan `{ "error": "Body tidak valid: ..." }` (400). Ini keputusan sadar pemilik issue,
 > bukan bug — jangan "perbaiki" tanpa diskusi.
+>
+> Hal yang sama berlaku untuk `/api/users/login`: `{ "data": "<uuid>" }` (200),
+> `{ "error": "Email dan password salah" }` (401), dan
+> `{ "error": "Body tidak valid: ..." }` (400) — tanpa field `success`.
 
 ## Struktur
 
@@ -86,9 +105,10 @@ src/
   env.ts              # pembacaan & validasi environment variable
   routes/
     notes-route.ts    # endpoint CRUD resource "notes"
-    users-route.ts    # endpoint registrasi user (lapisan HTTP)
+    users-route.ts    # endpoint registrasi + login user (lapisan HTTP)
   services/
-    users-service.ts  # logic bisnis user (hash password, cek duplikat, insert)
+    users-service.ts  # logic bisnis user (hash password, cek duplikat, insert,
+                      # verifikasi login, buat token session)
   db/
     client.ts         # koneksi MySQL (pool) + instance Drizzle
     schema.ts         # definisi tabel Drizzle
