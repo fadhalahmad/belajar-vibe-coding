@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1794270121550,
+      "tag": "0000_open_queen_noir",
+      "breakpoints": true
+    }
+  ]
+}
