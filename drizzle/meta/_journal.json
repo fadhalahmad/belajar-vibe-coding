@@ -8,6 +8,13 @@
       "when": 1794270121550,
       "tag": "0000_open_queen_noir",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1794285326006,
+      "tag": "0001_even_longshot",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,6 @@
 import { Elysia } from "elysia";
-import { notesRoutes } from "./routes/notes";
+import { notesRoutes } from "./routes/notes-route";
+import { usersRoutes } from "./routes/users-route";
 
 export const app = new Elysia()
   .onError(({ code, error, set }) => {
@@ -14,4 +15,5 @@ export const app = new Elysia()
   })
   .get("/", () => ({ success: true, data: { name: "belajar-vibe-coding", status: "ok" } }))
   .get("/health", () => ({ success: true, data: { status: "ok" } }))
-  .use(notesRoutes);
+  .use(notesRoutes)
+  .use(usersRoutes);
