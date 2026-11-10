@@ -49,6 +49,8 @@ Kalau koneksi database gagal saat start, server sengaja langsung berhenti dengan
 | GET    | `/notes/:id`      | Detail satu note                  |
 | POST   | `/notes`          | Buat note baru                    |
 | DELETE | `/notes/:id`      | Hapus note                        |
+| POST   | `/api/users`      | Registrasi user baru              |
+| POST   | `/api/users/login`| Login user, mengembalikan token   |
 
 Contoh membuat note:
 
@@ -58,22 +60,58 @@ curl -X POST http://localhost:3000/notes \
   -d '{"title": "Belajar Bun", "content": "Halo dari Elysia"}'
 ```
 
+Contoh registrasi user:
+
+```bash
+curl -i -X POST http://localhost:3000/api/users \
+  -H "Content-Type: application/json" \
+  -d '{"name":"fadhal","email":"fadhal@localhost","password":"rahasia"}'
+# → 201 {"data":"OK"}
+```
+
+Contoh login:
+
+```bash
+curl -i -X POST http://localhost:3000/api/users/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"fadhal@localhost","password":"rahasia"}'
+# → 200 {"data":"<uuid-token>"}
+```
+
+> **Catatan:** login mengembalikan token session dan menyimpannya di tabel `sessions`,
+> tapi token itu **belum dipakai** untuk mengautentikasi request lain. Tidak ada
+> middleware auth di project ini — jadi jangan bingung kalau token tidak "berfungsi"
+> di endpoint lain. Itu memang di luar lingkup, bukan bug.
+
 Semua response memakai bentuk konsisten:
 - sukses: `{ "success": true, "data": ... }`
 - gagal: `{ "success": false, "error": "pesan" }`
+
+> **Pengecualian:** response `/api/users` **sengaja** tidak memakai field `success`.
+> Bentuknya `{ "data": "OK" }` (201), `{ "error": "Email sudah terdaftar" }` (409),
+> dan `{ "error": "Body tidak valid: ..." }` (400). Ini keputusan sadar pemilik issue,
+> bukan bug — jangan "perbaiki" tanpa diskusi.
+>
+> Hal yang sama berlaku untuk `/api/users/login`: `{ "data": "<uuid>" }` (200),
+> `{ "error": "Email dan password salah" }` (401), dan
+> `{ "error": "Body tidak valid: ..." }` (400) — tanpa field `success`.
 
 ## Struktur
 
 ```
 src/
-  index.ts        # entry point: cek koneksi DB, start server
-  app.ts          # instance Elysia, error handling, route global
-  env.ts          # pembacaan & validasi environment variable
+  index.ts            # entry point: cek koneksi DB, start server
+  app.ts              # instance Elysia, error handling, route global
+  env.ts              # pembacaan & validasi environment variable
   routes/
-    notes.ts      # endpoint CRUD resource "notes"
+    notes-route.ts    # endpoint CRUD resource "notes"
+    users-route.ts    # endpoint registrasi + login user (lapisan HTTP)
+  services/
+    users-service.ts  # logic bisnis user (hash password, cek duplikat, insert,
+                      # verifikasi login, buat token session)
   db/
-    client.ts      # koneksi MySQL (pool) + instance Drizzle
-    schema.ts      # definisi tabel Drizzle
+    client.ts         # koneksi MySQL (pool) + instance Drizzle
+    schema.ts         # definisi tabel Drizzle
 drizzle.config.ts  # konfigurasi drizzle-kit (dialect mysql)
 drizzle/           # hasil generate migration (jangan edit manual)
 ```
