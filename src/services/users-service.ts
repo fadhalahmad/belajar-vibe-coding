@@ -121,3 +121,22 @@ export async function getCurrentUser(
 
   return { ok: true, user: row };
 }
+
+export type LogoutResult =
+  | { ok: true }
+  | { ok: false; reason: "UNAUTHORIZED" };
+
+export async function logoutUser(token: string): Promise<LogoutResult> {
+  // Hapus hanya session dengan token ini. Session user yang sama di perangkat
+  // lain tidak ikut terhapus.
+  const [result] = await db
+    .delete(sessions)
+    .where(eq(sessions.token, token));
+
+  // Tidak ada row yang cocok → token tidak dikenal atau sudah logout.
+  if (result.affectedRows === 0) {
+    return { ok: false, reason: "UNAUTHORIZED" };
+  }
+
+  return { ok: true };
+}
