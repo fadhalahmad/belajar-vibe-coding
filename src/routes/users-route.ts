@@ -1,5 +1,9 @@
 import Elysia from "elysia";
-import { loginUser, registerUser } from "../services/users-service";
+import {
+  getCurrentUser,
+  loginUser,
+  registerUser,
+} from "../services/users-service";
 
 function isValidRegisterBody(
   value: unknown
@@ -20,6 +24,14 @@ function isValidLoginBody(
   if (typeof obj.email !== "string" || obj.email.trim().length === 0) return false;
   if (typeof obj.password !== "string" || obj.password.trim().length === 0) return false;
   return true;
+}
+
+// Terima "Bearer <token>" dengan "Bearer" case-insensitive. Mengembalikan null
+// untuk bentuk apa pun yang tidak valid, supaya route tinggal cek null → 401.
+function parseBearerToken(header: string | undefined): string | null {
+  if (!header) return null;
+  const match = /^Bearer\s+(\S+)$/i.exec(header.trim());
+  return match ? match[1] : null;
 }
 
 export const usersRoutes = new Elysia({ prefix: "/api" })
@@ -80,4 +92,38 @@ export const usersRoutes = new Elysia({ prefix: "/api" })
         };
       },
     }
-  );
+  )
+
+  // GET /api/users/current — data user yang sedang login (butuh token)
+  .get("/users/current", async ({ headers, set }) => {
+    try {
+      const token = parseBearerToken(headers.authorization);
+
+      // Header hilang, format salah, atau token tidak dikenal → 401 yang sama.
+      if (!token) {
+        set.status = 401;
+        return { error: "Unauthorized" };
+      }
+
+      const result = await getCurrentUser(token);
+
+      if (!result.ok) {
+        set.status = 401;
+        return { error: "Unauthorized" };
+      }
+
+      set.status = 200;
+      return {
+        data: {
+          id: result.user.id,
+          name: result.user.name,
+          email: result.user.email,
+          created_at: result.user.createdAt,
+        },
+      };
+    } catch (error) {
+      console.error("[GET /api/users/current]", error);
+      set.status = 500;
+      return { error: "Terjadi kesalahan pada server" };
+    }
+  });
