@@ -89,3 +89,35 @@ export async function loginUser(input: {
 
   return { ok: true, token };
 }
+
+export type CurrentUserResult =
+  | {
+      ok: true;
+      user: { id: number; name: string; email: string; createdAt: Date };
+    }
+  | { ok: false; reason: "UNAUTHORIZED" };
+
+export async function getCurrentUser(
+  token: string
+): Promise<CurrentUserResult> {
+  // Ambil kolom eksplisit — jangan select() polos, supaya kolom `password`
+  // tidak pernah ikut terambil dari database.
+  const [row] = await db
+    .select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      createdAt: users.createdAt,
+    })
+    .from(sessions)
+    .innerJoin(users, eq(users.id, sessions.userId))
+    .where(eq(sessions.token, token))
+    .limit(1);
+
+  // Token tidak ada di tabel sessions → unauthorized.
+  if (!row) {
+    return { ok: false, reason: "UNAUTHORIZED" };
+  }
+
+  return { ok: true, user: row };
+}

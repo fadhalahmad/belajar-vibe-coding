@@ -43,35 +43,32 @@ export const notesRoutes = new Elysia({ prefix: "/notes" })
   })
 
   // POST /notes — buat note baru
-  .post(
-    "/",
-    async ({ body, set }) => {
-      const { title, content } = body;
-      const [inserted] = await db
-        .insert(notes)
-        .values({ title: title.trim(), content: content ?? null })
-        .$returningId();
-
-      const [created] = await db
-        .select()
-        .from(notes)
-        .where(eq(notes.id, inserted.id))
-        .limit(1);
-
-      set.status = 201;
-      return { success: true as const, data: created };
-    },
-    {
-      body: isValidNoteBody,
-      error: ({ set }) => {
-        set.status = 400;
-        return {
-          success: false as const,
-          error: "Body tidak valid: 'title' wajib string tidak kosong, 'content' opsional string",
-        };
-      },
+  .post("/", async ({ body, set }) => {
+    // Validasi manual di dalam handler: Elysia 1.4 hanya menerima schema
+    // typebox/Standard Schema di opsi `body`, bukan type guard function.
+    if (!isValidNoteBody(body)) {
+      set.status = 400;
+      return {
+        success: false as const,
+        error: "Body tidak valid: 'title' wajib string tidak kosong, 'content' opsional string",
+      };
     }
-  )
+
+    const { title, content } = body;
+    const [inserted] = await db
+      .insert(notes)
+      .values({ title: title.trim(), content: content ?? null })
+      .$returningId();
+
+    const [created] = await db
+      .select()
+      .from(notes)
+      .where(eq(notes.id, inserted.id))
+      .limit(1);
+
+    set.status = 201;
+    return { success: true as const, data: created };
+  })
 
   // DELETE /notes/:id — hapus note
   .delete("/:id", async ({ params, set }) => {

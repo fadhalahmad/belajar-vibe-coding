@@ -1,5 +1,9 @@
 import Elysia from "elysia";
-import { loginUser, registerUser } from "../services/users-service";
+import {
+  getCurrentUser,
+  loginUser,
+  registerUser,
+} from "../services/users-service";
 
 function isValidRegisterBody(
   value: unknown
@@ -22,11 +26,28 @@ function isValidLoginBody(
   return true;
 }
 
+// Terima "Bearer <token>" dengan "Bearer" case-insensitive. Mengembalikan null
+// untuk bentuk apa pun yang tidak valid, supaya route tinggal cek null → 401.
+function parseBearerToken(header: string | undefined): string | null {
+  if (!header) return null;
+  const match = /^Bearer\s+(\S+)$/i.exec(header.trim());
+  return match ? match[1] : null;
+}
+
 export const usersRoutes = new Elysia({ prefix: "/api" })
   // POST /api/users — registrasi user baru
-  .post(
-    "/users",
-    async ({ body, set }) => {
+  .post("/users", async ({ body, set }) => {
+    // Validasi manual di dalam handler: Elysia 1.4 hanya menerima schema
+    // typebox/Standard Schema di opsi `body`, bukan type guard function.
+    if (!isValidRegisterBody(body)) {
+      set.status = 400;
+      return {
+        error:
+          "Body tidak valid: 'name', 'email', dan 'password' wajib string tidak kosong",
+      };
+    }
+
+    try {
       const result = await registerUser({
         name: body.name,
         email: body.email,
@@ -40,23 +61,24 @@ export const usersRoutes = new Elysia({ prefix: "/api" })
 
       set.status = 201;
       return { data: "OK" };
-    },
-    {
-      body: isValidRegisterBody,
-      error: ({ set }) => {
-        set.status = 400;
-        return {
-          error:
-            "Body tidak valid: 'name', 'email', dan 'password' wajib string tidak kosong",
-        };
-      },
+    } catch (error) {
+      console.error("[POST /api/users]", error);
+      set.status = 500;
+      return { error: "Terjadi kesalahan pada server" };
     }
-  )
+  })
 
   // POST /api/users/login — login user, mengembalikan token session
-  .post(
-    "/users/login",
-    async ({ body, set }) => {
+  .post("/users/login", async ({ body, set }) => {
+    if (!isValidLoginBody(body)) {
+      set.status = 400;
+      return {
+        error:
+          "Body tidak valid: 'email' dan 'password' wajib string tidak kosong",
+      };
+    }
+
+    try {
       const result = await loginUser({
         email: body.email,
         password: body.password,
@@ -69,15 +91,43 @@ export const usersRoutes = new Elysia({ prefix: "/api" })
 
       set.status = 200;
       return { data: result.token };
-    },
-    {
-      body: isValidLoginBody,
-      error: ({ set }) => {
-        set.status = 400;
-        return {
-          error:
-            "Body tidak valid: 'email' dan 'password' wajib string tidak kosong",
-        };
-      },
+    } catch (error) {
+      console.error("[POST /api/users/login]", error);
+      set.status = 500;
+      return { error: "Terjadi kesalahan pada server" };
     }
-  );
+  })
+
+  // GET /api/users/current — data user yang sedang login (butuh token)
+  .get("/users/current", async ({ headers, set }) => {
+    try {
+      const token = parseBearerToken(headers.authorization);
+
+      // Header hilang, format salah, atau token tidak dikenal → 401 yang sama.
+      if (!token) {
+        set.status = 401;
+        return { error: "Unauthorized" };
+      }
+
+      const result = await getCurrentUser(token);
+
+      if (!result.ok) {
+        set.status = 401;
+        return { error: "Unauthorized" };
+      }
+
+      set.status = 200;
+      return {
+        data: {
+          id: result.user.id,
+          name: result.user.name,
+          email: result.user.email,
+          created_at: result.user.createdAt,
+        },
+      };
+    } catch (error) {
+      console.error("[GET /api/users/current]", error);
+      set.status = 500;
+      return { error: "Terjadi kesalahan pada server" };
+    }
+  });
