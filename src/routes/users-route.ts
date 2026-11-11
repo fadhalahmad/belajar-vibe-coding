@@ -36,9 +36,18 @@ function parseBearerToken(header: string | undefined): string | null {
 
 export const usersRoutes = new Elysia({ prefix: "/api" })
   // POST /api/users — registrasi user baru
-  .post(
-    "/users",
-    async ({ body, set }) => {
+  .post("/users", async ({ body, set }) => {
+    // Validasi manual di dalam handler: Elysia 1.4 hanya menerima schema
+    // typebox/Standard Schema di opsi `body`, bukan type guard function.
+    if (!isValidRegisterBody(body)) {
+      set.status = 400;
+      return {
+        error:
+          "Body tidak valid: 'name', 'email', dan 'password' wajib string tidak kosong",
+      };
+    }
+
+    try {
       const result = await registerUser({
         name: body.name,
         email: body.email,
@@ -52,23 +61,24 @@ export const usersRoutes = new Elysia({ prefix: "/api" })
 
       set.status = 201;
       return { data: "OK" };
-    },
-    {
-      body: isValidRegisterBody,
-      error: ({ set }) => {
-        set.status = 400;
-        return {
-          error:
-            "Body tidak valid: 'name', 'email', dan 'password' wajib string tidak kosong",
-        };
-      },
+    } catch (error) {
+      console.error("[POST /api/users]", error);
+      set.status = 500;
+      return { error: "Terjadi kesalahan pada server" };
     }
-  )
+  })
 
   // POST /api/users/login — login user, mengembalikan token session
-  .post(
-    "/users/login",
-    async ({ body, set }) => {
+  .post("/users/login", async ({ body, set }) => {
+    if (!isValidLoginBody(body)) {
+      set.status = 400;
+      return {
+        error:
+          "Body tidak valid: 'email' dan 'password' wajib string tidak kosong",
+      };
+    }
+
+    try {
       const result = await loginUser({
         email: body.email,
         password: body.password,
@@ -81,18 +91,12 @@ export const usersRoutes = new Elysia({ prefix: "/api" })
 
       set.status = 200;
       return { data: result.token };
-    },
-    {
-      body: isValidLoginBody,
-      error: ({ set }) => {
-        set.status = 400;
-        return {
-          error:
-            "Body tidak valid: 'email' dan 'password' wajib string tidak kosong",
-        };
-      },
+    } catch (error) {
+      console.error("[POST /api/users/login]", error);
+      set.status = 500;
+      return { error: "Terjadi kesalahan pada server" };
     }
-  )
+  })
 
   // GET /api/users/current — data user yang sedang login (butuh token)
   .get("/users/current", async ({ headers, set }) => {
