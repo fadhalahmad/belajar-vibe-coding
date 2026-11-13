@@ -39,6 +39,17 @@ Server berjalan di `http://localhost:3000` (ubah lewat `PORT` di `.env`).
 
 Kalau koneksi database gagal saat start, server sengaja langsung berhenti dengan pesan error dan petunjuk — bukan diam-diam error di request pertama.
 
+## Testing
+
+```bash
+bun test
+```
+
+Test ada di folder `tests/` dan memanggil app langsung lewat `app.handle(...)`, jadi
+tidak perlu menyalakan server. Test memakai database yang sama seperti `.env`, dan
+**setiap skenario menghapus data `sessions`, `notes`, dan `users` terlebih dahulu** —
+jangan jalankan bersamaan dengan server development yang sedang memakai data penting.
+
 ## Endpoint
 
 | Method | Path              | Keterangan                        |
@@ -143,6 +154,13 @@ src/
     schema.ts         # definisi tabel Drizzle
 drizzle.config.ts  # konfigurasi drizzle-kit (dialect mysql)
 drizzle/           # hasil generate migration (jangan edit manual)
+tests/
+  helpers.ts           # helper bersama: reset data, buat user, login, request
+  global.test.ts       # GET / dan GET /health
+  notes.test.ts        # seluruh endpoint /notes
+  users.test.ts        # POST /api/users dan POST /api/users/login
+  current-user.test.ts # GET /api/users/current
+  logout.test.ts       # DELETE /api/users/logout
 ```
 
 ## Perintah penting
@@ -153,6 +171,7 @@ drizzle/           # hasil generate migration (jangan edit manual)
 | `bun run dev`       | Jalankan server development                 |
 | `bun run db:generate` | Generate file migration dari schema       |
 | `bun run db:migrate`  | Terapkan migration ke database           |
+| `bun test`            | Jalankan seluruh unit test               |
 
 ## Asumsi implementasi
 
