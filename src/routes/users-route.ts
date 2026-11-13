@@ -2,6 +2,7 @@ import Elysia from "elysia";
 import {
   getCurrentUser,
   loginUser,
+  logoutUser,
   registerUser,
 } from "../services/users-service";
 
@@ -127,6 +128,33 @@ export const usersRoutes = new Elysia({ prefix: "/api" })
       };
     } catch (error) {
       console.error("[GET /api/users/current]", error);
+      set.status = 500;
+      return { error: "Terjadi kesalahan pada server" };
+    }
+  })
+
+  // DELETE /api/users/logout — hapus session milik token ini (butuh token)
+  .delete("/users/logout", async ({ headers, set }) => {
+    try {
+      const token = parseBearerToken(headers.authorization);
+
+      // Header hilang, format salah, atau token tidak dikenal → 401 yang sama.
+      if (!token) {
+        set.status = 401;
+        return { error: "Unauthorized" };
+      }
+
+      const result = await logoutUser(token);
+
+      if (!result.ok) {
+        set.status = 401;
+        return { error: "Unauthorized" };
+      }
+
+      set.status = 200;
+      return { data: "ok" };
+    } catch (error) {
+      console.error("[DELETE /api/users/logout]", error);
       set.status = 500;
       return { error: "Terjadi kesalahan pada server" };
     }

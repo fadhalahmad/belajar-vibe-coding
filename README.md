@@ -52,6 +52,7 @@ Kalau koneksi database gagal saat start, server sengaja langsung berhenti dengan
 | POST   | `/api/users`      | Registrasi user baru              |
 | POST   | `/api/users/login`| Login user, mengembalikan token   |
 | GET    | `/api/users/current` | Data user yang sedang login (butuh token) |
+| DELETE | `/api/users/logout`  | Logout, hapus session (butuh token) |
 
 Contoh membuat note:
 
@@ -88,6 +89,17 @@ curl -i http://localhost:3000/api/users/current \
 # → 200 {"data":{"id":1,"name":"fadhal","email":"fadhal@localhost","created_at":"..."}}
 ```
 
+Contoh logout:
+
+```bash
+curl -i -X DELETE http://localhost:3000/api/users/logout \
+  -H "Authorization: Bearer $TOKEN"
+# → 200 {"data":"ok"}
+```
+
+Setelah logout, row session dengan token tersebut dihapus dan token itu tidak bisa
+dipakai lagi. Session lain milik user yang sama tetap berlaku.
+
 > **Catatan:** token dari login dipakai oleh `GET /api/users/current`. Endpoint lain
 > (`notes`, `POST /api/users`, `POST /api/users/login`) **tidak** diproteksi token —
 > tidak ada middleware auth global di project ini. Itu memang di luar lingkup,
@@ -108,6 +120,9 @@ Semua response memakai bentuk konsisten:
 >
 > Sama juga untuk `/api/users/current`: `{ "data": { ...user... } }` (200) dan
 > `{ "error": "Unauthorized" }` (401) — tanpa field `success`.
+>
+> Begitu juga `/api/users/logout`: `{ "data": "ok" }` (200) dan
+> `{ "error": "Unauthorized" }` (401) — tanpa field `success`.
 
 ## Struktur
 
@@ -118,10 +133,11 @@ src/
   env.ts              # pembacaan & validasi environment variable
   routes/
     notes-route.ts    # endpoint CRUD resource "notes"
-    users-route.ts    # endpoint registrasi + login + current user (lapisan HTTP)
+    users-route.ts    # endpoint registrasi + login + current user + logout (lapisan HTTP)
   services/
     users-service.ts  # logic bisnis user (hash password, cek duplikat, insert,
-                      # verifikasi login, buat token session, lookup token)
+                      # verifikasi login, buat token session, lookup token,
+                      # hapus session saat logout)
   db/
     client.ts         # koneksi MySQL (pool) + instance Drizzle
     schema.ts         # definisi tabel Drizzle
